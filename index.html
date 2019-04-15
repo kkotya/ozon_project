@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+   <head>
+       <meta charset="UTF-8">
+       <title>OZON.ru</title>
+  </head>
+
+   <body>
+
+       <div class="row">
+           <div class="col-sm-6">
+                   <div class="card-body">
+                       <h5 class="card-title">Загрузите файл для проверки</h5>
+                       <button  type="button" class="btn btn-primary card-body" id="upload" onclick="Upload()">
+                            Загрузить
+                       </button>
+                   </div>
+           </div>
+           <div class="col-sm-6">
+                   <div class="card-body">
+                       <label for="name">Имя нового файла</label>
+                       <input type="text" id="log_file"
+                              class="form-control"
+                              name="log_file_input" required
+                              minlength="4"
+                              maxlength="16"
+                              size="10"
+                              placeholder="Введите название файла">
+                           <button  type="button" class="btn btn-primary" onclick="CreateExcel()">
+                               Создать
+                           </button>
+                   </div>
+           </div>
+       </div>
+
+   </body>
+
+   <script>
+   // откроем глобальные переменные для массива ссылок и количества страниц
+   var my_id = 1; // id галок
+   var arr_url_first_col = [];
+   var arr_url_second_col = [];
+   var price_first = [];
+   var price_second = [];
+   var matching = [];
+   var page_count = 1; // номер страницы
+   // открываем поток на запись в файл
+   const fs = require("fs");
+   // Require library
+
+       function Upload() {
+           const {dialog} = require("electron").remote;
+           dialog.showOpenDialog((fileNames) => {
+               if(fileNames === undefined) {
+                   console.log("No files were selected");
+                   alert("Файл не выбран!");
+                   return;
+               }
+
+               fs.readFile(fileNames[0], "utf-8", (err, data) => {
+                   if(err) {
+                       console.log("Cannot read file ", err);
+                       alert("Неправильный формат!");
+                       return;
+                   }
+
+                   var arr = data.split(',');
+                   console.log(arr);
+                   arr_url_first_col.push(arr[0]);
+
+                   for (var i = 1; i < arr.length; i++) {
+                       console.log(i);
+                       var s = arr[i].split('\n');
+                       console.log(s);
+                       var subS0 = s[0].substring(0, 4);
+                       var subS1 = s[1].substring(0, 4);
+
+                       if (subS0 != "http") {
+                           var first = "https://" + s[0];
+                           arr_url_second_col.push(first);
+                       }
+                       else  {
+                           arr_url_second_col.push(s[0]);
+                       }
+                       if (s[1] != "") {
+                           if (subS1 != "http") {
+                               var second = "https://" + s[1];
+                               arr_url_first_col.push(second);
+                           }
+                           else {
+                               arr_url_first_col.push(s[1]);
+                           }
+                       }
+                   }
+
+                   console.log(arr_url_first_col);
+                   console.log(arr_url_second_col);
+                   if (arr_url_first_col.length >= 5) { //если больше 5 строк, будем выводить по частям
+                       for (var i = 0; i < 5; i++) { // первые 5 строк
+                           OpenIframe(i);
+                       }
+                       CreateButton();
+                   }
+                   else {
+                       for (var i = 0; i < arr_url_first_col.length; i++) {
+                           OpenIframe(i);
+                       }
+                   }
+               }); //// здесь заканчивается readFile
+           }); // здесь заканчивается showOpenDialog
+       }
+
+       function OpenIframe(i) {
+           var main_div = document.createElement("div");
+           main_div.setAttribute("class", "row");
+           main_div.setAttribute("id", "delete_me" + i);
+
+           var width_div_1 = document.createElement("div");
+           width_div_1.setAttribute("class", "col-sm-5");
+
+           var card_div_1 = document.createElement("div");
+           card_div_1.setAttribute("class", "card-body");
+
+           var ifrm_1 = document.createElement("iframe");
+           ifrm_1.setAttribute("src", arr_url_first_col[i]);
+           ifrm_1.setAttribute("sandbox", "allow-scripts allow-same-origin");
+           ifrm_1.style.width = "610px";
+           ifrm_1.style.height = "480px";
+           ifrm_1.setAttribute("class", "card");
+
+           card_div_1.appendChild(ifrm_1);
+           width_div_1.appendChild(card_div_1);
+           main_div.appendChild(width_div_1);
+
+           var width_div_2 = document.createElement("div");
+           width_div_2.setAttribute("class", "col-sm-5");
+
+           var card_div_2 = document.createElement("div");
+           card_div_2.setAttribute("class", "card-body");
+
+           var ifrm_2 = document.createElement("iframe");
+           ifrm_2.setAttribute("src", arr_url_second_col[i]);
+           ifrm_2.setAttribute("class", "card");
+           ifrm_2.setAttribute("sandbox", "allow-scripts allow-same-origin");
+           ifrm_2.style.width = "610px";
+           ifrm_2.style.height = "480px";
+
+           card_div_2.appendChild(ifrm_2);
+           width_div_2.appendChild(card_div_2);
+           main_div.appendChild(width_div_2);
+
+            var rad1 = document.createElement("input"); // добавляем галочки
+            var rad2 = document.createElement("input");
+			var rad3 = document.createElement("input"); // 404
+            rad1.type = "radio";
+            rad2.type = "radio";
+			rad3.type = "radio";
+            rad1.setAttribute('id', "Choice" + my_id);
+            rad2.setAttribute('id', "Choice" + my_id);
+			rad3.setAttribute('id', "Choice" + my_id);
+            rad1.setAttribute('name', "Choice" + my_id);
+            rad2.setAttribute('name', "Choice" + my_id);
+			rad3.setAttribute('name', "Choice" + my_id);
+            rad1.setAttribute('value', "1");
+            rad2.setAttribute('value', "0");
+			rad3.setAttribute('value', "3");
+            rad1.setAttribute('onchange', "Check()");
+            rad2.setAttribute('onchange', "Check()");
+			rad3.setAttribute('onchange', "Check()");
+
+			var label = document.createElement('label');
+			label.setAttribute('for', 'Choice' + my_id);
+			label.innerHTML = "Да";
+
+			var label2 = document.createElement('label');
+			label2.setAttribute('for', 'Choice' + my_id);
+			label2.innerHTML = "Нет";
+			
+			var label3 = document.createElement('label');
+			label3.setAttribute('for', 'Choice' + my_id);
+			label3.innerHTML = "404";
+
+           var width_div_3 = document.createElement("div");
+           width_div_3.setAttribute("class", "col-sm-2");
+
+           var card_div_3 = document.createElement("div");
+           card_div_3.setAttribute("class", "card");
+
+           var card_div_body = document.createElement("div");
+           card_div_body.setAttribute("class", "card-body");
+
+           card_div_3.appendChild(rad1);
+           card_div_3.appendChild(label);
+           card_div_3.appendChild(rad2);
+           card_div_3.appendChild(label2);
+		   card_div_3.appendChild(rad3);
+           card_div_3.appendChild(label3);
+
+           var price_1 = document.createElement("input");
+           price_1.setAttribute("type", "text");
+           price_1.setAttribute("id", "Price_1" + my_id);
+           price_1.setAttribute("value", "");
+           var label_price_1 = document.createElement('label');
+           //label.setAttribute('for', 'Choice' + my_id);
+           label_price_1.innerHTML = "Цена первого магазина";
+
+           var price_2 = document.createElement("input");
+           price_2.setAttribute("type", "text");
+           price_2.setAttribute("id", "Price_2" + my_id);
+           price_2.setAttribute("value", "");
+           var label_price_2 = document.createElement('label');
+           //label.setAttribute('for', 'Choice' + my_id);
+           label_price_2.innerHTML = "Цена второго магазина";
+
+            card_div_3.appendChild(label_price_1);
+            card_div_3.appendChild(price_1);
+            card_div_3.appendChild(label_price_2);
+            card_div_3.appendChild(price_2);
+            card_div_body.appendChild(card_div_3);
+            width_div_3.appendChild(card_div_body);
+            main_div.appendChild(width_div_3);
+            document.body.appendChild(main_div);
+            ++my_id;
+       }
+
+       function NumPage() {
+           console.log("create page");
+           console.log(page_count);
+           if (page_count > 1) {
+               var id = page_count - 1;
+               document.getElementById("page" + id).innerHTML = "";
+           }
+           var pageDiv = document.createElement("div");
+           pageDiv.setAttribute("class", "card-body");
+           pageDiv.setAttribute("float", "right");
+           pageDiv.setAttribute("id", "page" + page_count);
+          // var page = document.createElement("p");
+          // var text = document.createTextNode("Страница " + page_count);
+           var rows = document.createElement("p");
+           var textRows = document.createTextNode("Строки ");
+          // page.appendChild(text);
+           //pageDiv.appendChild(page);
+           rows.appendChild(textRows);
+           pageDiv.appendChild(rows);
+           document.body.appendChild(pageDiv);
+       }
+
+
+       function IsEmpty () {
+           var id_row = (page_count - 1)*5 + 1;
+           console.log("id_row", id_row);
+           console.log(matching[id_row]);
+           for (var i = id_row; (i < (id_row + 5) && i <= arr_url_first_col.length); ++i) {
+               if (matching[i-1] != "0" && matching[i-1] != "1"&& matching[i-1] != "3") {
+                  return true;
+               }
+           }
+           return false;
+       }
+
+       function CreateButton() {
+           console.log("create button");
+           console.log(page_count);
+           if (page_count > 1) {
+               var id = page_count - 1;
+               document.getElementById("next" + id).innerHTML = "";
+           }
+
+           var main_div = document.createElement("div");
+           main_div.setAttribute("class", "row");
+           main_div.setAttribute("id", "next" + page_count);
+
+           var width_div_1 = document.createElement("div");
+           width_div_1.setAttribute("class", "col-sm-5");
+
+           var card_div = document.createElement("div");
+           card_div.setAttribute("class", "card-body");
+
+           var nextPage = document.createElement("button");
+           nextPage.innerHTML = "Сохранить";
+           nextPage.setAttribute("type", "button");
+           nextPage.setAttribute("class", "btn btn-primary");
+           console.log("next" + page_count);
+           nextPage.setAttribute("onclick", "NewPage()");
+
+
+           card_div.appendChild(nextPage);
+           width_div_1.appendChild(card_div);
+           main_div.appendChild(width_div_1);
+
+
+           var width_div_2 = document.createElement("div");
+           width_div_2.setAttribute("class", "col-sm-5");
+
+           var pageDiv = document.createElement("div");
+           pageDiv.setAttribute("class", "card-body");
+           pageDiv.setAttribute("class", "text-right");
+
+           var page = document.createElement("p");
+           var text = document.createTextNode("Страница: " + page_count);
+           var rows = document.createElement("p");
+           var rowFirst = (page_count - 1)*5 + 1;
+           var rowLast = rowFirst + 4;
+           var textRows = document.createTextNode("Строки: " + rowFirst + " - " + rowLast);
+
+           page.appendChild(text);
+           page.appendChild(textRows);
+           pageDiv.appendChild(page);
+           rows.appendChild(textRows);
+           pageDiv.appendChild(rows);
+           width_div_2.appendChild(pageDiv);
+           main_div.appendChild(width_div_2);
+           document.body.appendChild(main_div);
+       }
+
+       function NewPage() {
+           if (IsEmpty()) {
+               alert("Пустые строки");
+               return;
+           }
+           AddPrice();
+           console.log(page_count);
+           DeleteDiv();
+           ++page_count;
+           console.log("new page");
+           var id_row = (page_count - 1)*5;
+
+           for (var i = id_row; ((i < id_row + 5) && (i < arr_url_first_col.length)); i++) { // 5, 6, 7, 8, 9
+               OpenIframe(i);
+           }
+           CreateButton();
+           IsEmpty();
+       }
+
+       function DeleteDiv() {
+           var id_row = (page_count - 1)*5;
+           for (var j = id_row; j < (id_row + 5); j++) {
+               document.getElementById("delete_me" + j).innerHTML = "";
+           }
+       }
+
+
+       function Check() {
+           console.log(page_count);
+           var id_row = (page_count - 1)*5 + 1;
+           for (var j = id_row; j < (id_row + 5); j++) {
+               var name_rad = "Choice" + j;
+               var rarr = document.getElementsByName(name_rad);
+                   for(var i = 0; i < rarr.length; i++) {
+                       if(rarr[i].checked) {
+                           console.log(rarr[i].value);
+                           console.log(name_rad);
+                           if (rarr[i].value === "0") {
+                               console.log("add 0, equal type");
+                               matching[j-1] = "0";
+                           }
+                           if (rarr[i].value === "1") {
+                               console.log("add 1");
+                               matching[j-1] = "1";
+                           }
+						   if (rarr[i].value === "3") {
+                               console.log("add 3");
+                               matching[j-1] = "3";
+                           }
+                   }
+               }
+           }
+       }
+
+
+       function AddPrice() {
+           console.log(page_count);
+           var id_row = (page_count - 1)*5 + 1;
+           for (var j = id_row; j < (id_row + 5); j++) {
+               var name_price_1 = "Price_1" + j;
+               var name_price_2 = "Price_2" + j;
+               var price_1 = document.getElementById(name_price_1);
+               var price_2 = document.getElementById(name_price_2);
+               console.log("price_1", price_1.value);
+               price_first[j-1] = price_1.value;
+               price_second[j-1] = price_2.value;
+           }
+           console.log(price_first);
+           console.log(price_second);
+       }
+
+       function CreateExcel() {
+           var excel = require("excel4node");
+
+           // Create a new instance of a Workbook class
+           var workbook = new excel.Workbook();
+
+           // Add Worksheets to the workbook
+           var worksheet = workbook.addWorksheet('Sheet 1');
+           var worksheet2 = workbook.addWorksheet('Sheet 2');
+
+           // Create a reusable style
+           var style = workbook.createStyle({
+             font: {
+               color: '#000000',
+               size: 12
+             },
+             numberFormat: '$#,##0.00; ($#,##0.00); -'
+           });
+
+
+
+           console.log("excel");
+
+           const outputFileNameInput = document.getElementById('log_file');
+           if (outputFileNameInput.value == "") {
+               console.log("пустая строка");
+               alert("Имя не введено!");
+           }
+           else  {
+               const outputFileName = outputFileNameInput.value + ".xlsx";
+               var length = arr_url_first_col.length;
+               worksheet.cell(1, 1).string("Url1").style(style);
+               worksheet.cell(1, 2).string("Url2").style(style);
+               worksheet.cell(1, 3).string("IsOK").style(style);
+               worksheet.cell(1, 4).string("Price1").style(style);
+               worksheet.cell(1, 5).string("Price2").style(style);
+               for (var i = 0; i < length; i++) {
+                   worksheet.cell(i+2, 1).string(arr_url_first_col[i]).style(style);
+                   worksheet.cell(i+2, 2).string(arr_url_second_col[i]).style(style);
+                   if (matching[i] == 1) {
+                       worksheet.cell(i+2, 3).string("Да").style(style);
+                   } else if (matching[i] == 0)  {
+                       worksheet.cell(i+2, 3).string("Нет").style(style);
+                   } else if (matching[i] == 3)  {
+                       worksheet.cell(i+2, 3).string("404").style(style);
+					   }
+                   worksheet.cell(i+2, 4).string(price_first[i]).style(style);
+                   worksheet.cell(i+2, 5).string(price_second[i]).style(style);
+               }
+               workbook.write(outputFileName);
+           }
+           alert("Файл создан!");
+       }
+
+       function Write() {
+           console.log("writing");
+           const outputFileNameInput = document.getElementById('log_file');
+           if (outputFileNameInput.value == "") {
+               console.log("пустая строка");
+               alert("Имя не введено!");
+           }
+           else  {
+               const outputFileName = outputFileNameInput.value + ".xlsx";
+               var writeStream = fs.createWriteStream(outputFileName);
+               var length = arr_url_first_col.length;
+               const os = require('os');
+               for (var i = 0; i < length; i++) {
+                   var x = matching[i];
+                   //var s = arr_url_first_col[i] + "," + arr_url_second_col[i] + "," + x + "," + price_first[i] + "," + price_second[i] + os.EOL;
+                   var s = x + "," + price_first[i] + "," + price_second[i] + os.EOL;
+                   writeStream.write(x);
+               }
+           }
+           writeStream.end();
+           alert("Файл создан!");
+       }
+
+  </script>
+
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <script scr="js/bootstrap.min.js"></script>
+</html>
